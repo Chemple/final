@@ -78,10 +78,14 @@ struct ChunkInfo {
 class ChunkManager {
 private:
   std::vector<ChunkInfo> chunk_infos_;
-  uint32_t chunk_number_;
+  uint64_t chunk_number_;
   std::unique_ptr<FileOpener> file_opener_;
   // std::shared_ptr<InputReader> input_file_reader_;
-  file_descrip_t output_file_fd_;
+  std::string output_file_name_0_;
+  std::string output_file_name_1_;
+
+  file_descrip_t output_file_fd_0_;
+  file_descrip_t output_file_fd_1_;
 
   auto OpenOrCreateOutputFile(const std::string &output_file_name,
                               uint64_t file_size) {
@@ -107,15 +111,16 @@ private:
         spdlog::critical("ftruncate failed");
       }
     }
-    output_file_fd_ = fd;
+    return fd;
   }
 
 public:
   ChunkManager(std::unique_ptr<FileOpener> &&file_opener,
-               const std::string &output_file_name) {
+               const std::string &output_file_name_0,
+               const std::string &output_file_name_1) {
     file_opener_ = std::move(file_opener);
     const auto &files_names = file_opener_->GetInputReader()->GetFileNames();
-    auto chunk_num = 0;
+    auto chunk_num = (uint64_t)0;
     auto file_id = 0;
     for (const auto &file_name : files_names) {
       std::string full_file_path = file_name;
@@ -151,7 +156,16 @@ public:
       file_id++;
     }
     chunk_number_ = chunk_num;
-    OpenOrCreateOutputFile(output_file_name, chunk_number_ * PAGE_SIZE);
+
+    spdlog::info("the chunk number is {}", chunk_num);
+    spdlog::info("the output file size is {} GB", chunk_num * 4 / 1024);
+
+    output_file_name_0_ = output_file_name_0;
+    output_file_name_1_ = output_file_name_1;
+    output_file_fd_0_ =
+        OpenOrCreateOutputFile(output_file_name_0, chunk_number_ * PAGE_SIZE);
+    output_file_fd_1_ =
+        OpenOrCreateOutputFile(output_file_name_1, chunk_number_ * PAGE_SIZE);
   }
 
   ChunkManager(ChunkManager &&) = delete;
@@ -163,7 +177,10 @@ public:
   auto GetFileDescript(project_file_id_t fid) {
     return file_opener_->GetFd(fid);
   }
-  const auto &GetOutputFileFd() { return output_file_fd_; }
+  const auto &GetOutputFileFd0() { return output_file_fd_0_; }
+  const auto &GetOutputFileName0() { return output_file_name_0_; }
+  const auto &GetOutputFileName1() { return output_file_name_1_; }
+  const auto &GetOutputFileFd1() { return output_file_fd_1_; }
 };
 
 } // namespace final

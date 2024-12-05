@@ -18,7 +18,7 @@ const uint32_t PAGE_SIZE = 4 * 1024 * 1024;
 const uint32_t PAGE_VALUE_NUM = PAGE_SIZE / sizeof(uint64_t);
 const uint32_t FRAME_NUM = MEMORY_LIMIT / PAGE_SIZE;
 // const uint32_t FRAME_NUM =
-const uint32_t WORKER_NUM = 32;
+const uint32_t WORKER_NUM = 1;
 
-const uint32_t OPEN_FILE_NUMS = 128;
+const uint32_t OPEN_FILE_NUMS = 512;
 } // namespace final

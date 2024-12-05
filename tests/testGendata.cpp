@@ -14,7 +14,7 @@ constexpr size_t ELEMENT_SIZE = sizeof(uint64_t); // 每个元素8字节
 constexpr size_t ELEMENTS_PER_CHUNK =
     CHUNK_SIZE / ELEMENT_SIZE;        // 每个chunk包含的元素数量
 constexpr size_t CHUNKS_PER_FILE = 4; // 每个文件包含4个chunk
-constexpr size_t TOTAL_FILES = 32;    // 总共生成32个文件
+constexpr size_t TOTAL_FILES = 8;    // 总共生成32个文件
 
 // 按照不同的方式打乱每个chunk的数据
 void shuffleChunk(std::vector<uint64_t> &chunk_data, size_t chunk_index) {

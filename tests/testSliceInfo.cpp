@@ -13,7 +13,8 @@ TEST(TestSlice, TetsInfo) {
       std::make_unique<final::FileOpener>(std::move(input_reader_ptr));
   auto chunk_manager = final::ChunkManager(
       std::move(opener_ptr),
-      std::string("/home/shiwen/project/final/output/output"));
+      std::string("/home/shiwen/project/final/output/output0"),
+      std::string("/home/shiwen/project/final/output/output1"));
   auto chunk_infos = chunk_manager.GetChunkInfo();
   spdlog::info("the number of slice is {}", chunk_manager.GetChunkNum());
   spdlog::info("the size of infos vec is {}", chunk_infos.size());
