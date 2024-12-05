@@ -191,8 +191,12 @@ public:
     for (auto i = begin_input_frame_id; i < (input_frame_num + 1); i++) {
       page_guards.emplace_back(buffer_pool_->GetFrame(i));
     }
-    assert(input_frame_num == block_num);
-    for (uint32_t i = 0; i < input_frame_num; i++) {
+    // assert(input_frame_num == block_num);
+    auto real_input_frame_used = input_frame_num;
+    if (block_num < input_frame_num) {
+      real_input_frame_used = block_num;
+    }
+    for (uint32_t i = 0; i < real_input_frame_used; i++) {
       assert(blockinfos[i].current_chunk_id_ == blockinfos[i].start_chunk_id_);
       assert(blockinfos[i].current_loc_in_chunk_ == 0);
       pread(source_file_fd, page_guards[i].page_->data, PAGE_SIZE,
@@ -202,7 +206,8 @@ public:
       min_heap.push({fist_value, i});
     }
     auto output_frame_loc = 0;
-    auto out_put_buffer = (uint64_t *)page_guards[input_frame_num].page_->data;
+    auto out_put_buffer =
+        (uint64_t *)page_guards[real_input_frame_used].page_->data;
     // check the condition.
     while (output_chunk_id < end_output_chunk_id) {
       assert(!min_heap.empty());
@@ -243,7 +248,7 @@ public:
     if (!min_heap.empty()) {
       spdlog::critical("min_heap is not empty");
     }
-    // assert(min_heap.empty());
+    assert(min_heap.empty());
   }
 
   // each thread generate its final sorted file.
@@ -260,17 +265,22 @@ public:
     auto begin_chunk_id = task.begin_chunk_id_;
     auto begin_frame_id = task.begin_frame_id_;
 
-    auto merge_section_size = 1;
+    auto merge_section_size = (uint32_t)1;
     auto block_infos = std::vector<BlockInfo>{};
-    auto itr_num = ceil(chunk_num, merge_section_size * merge_factor_k);
+    // auto itr_num = chunk_num / (merge_section_size * merge_factor_k);
     auto source_fd = task.fd0_;
     auto target_fd = task.fd1_;
     // check the condition.
     while (merge_section_size < chunk_num) {
+      auto itr_num = ceil(chunk_num, (merge_section_size * merge_factor_k));
       for (auto i = 0; i < itr_num; i++) {
         block_infos.clear();
         // auto this_round_merge_factor_k = merge_factor_k;
-
+        // if (i == (itr_num - 1)) [[unlikely]] {
+        //   this_round_merge_factor_k =
+        //       chunk_num - (merge_factor_k * merge_section_size * (itr_num -
+        //       1));
+        // }
         for (auto iid = 0; iid < merge_factor_k; iid++) {
           // 💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩
           auto start_chunk_id = begin_chunk_id +
@@ -279,19 +289,28 @@ public:
           // auto end_chunk_id = begin_chunk_id +
           //                     merge_section_size * merge_factor_k * i +
           //                     merge_section_size * (iid + 1) - 1;
-          auto block_chunk_num =
-              ((merge_section_size * merge_factor_k * i +
-                    merge_section_size * (iid + 1) <=
-                chunk_num))
-                  ? merge_section_size
-                  : chunk_num - (merge_section_size * merge_factor_k * i +
-                                 merge_section_size * iid);
-          // 💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩
-          if (block_chunk_num > 0) {
+          auto block_chunk_num = merge_section_size;
+          if (chunk_num < merge_section_size * merge_factor_k * i +
+                              merge_section_size * (iid + 1)) {
+            block_chunk_num =
+                chunk_num - (merge_section_size * merge_factor_k * i +
+                             merge_section_size * iid);
+            if (block_chunk_num != 0) {
+              block_infos.push_back({BlockInfo{start_chunk_id, start_chunk_id,
+                                               0, block_chunk_num}});
+            }
+            break;
+          } else {
             block_infos.push_back({BlockInfo{start_chunk_id, start_chunk_id, 0,
                                              block_chunk_num}});
           }
+          // 💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩
         }
+        // for (const auto &elme : block_infos) {
+        //   spdlog::info("the vec is {}, {}, {}, {}", elme.chunk_num_,
+        //                elme.current_chunk_id_, elme.chunk_num_,
+        //                elme.start_chunk_id_);
+        // }
         MergeSortKBlocks(block_infos, begin_frame_id, frame_num - 1, source_fd,
                          target_fd);
       }

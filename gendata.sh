@@ -15,7 +15,7 @@ for i in $(seq 1 128); do
   FILE_PATH="${FOLDER_PATH}/${FILE_NAME}"
   
   # 使用 dd 命令生成文件，4MB大，内容来自 /dev/urandom
-  dd if=/dev/urandom of="$FILE_PATH" bs=2M count=64 status=progress
+  dd if=/dev/urandom of="$FILE_PATH" bs=2K count=64 status=progress
   
   echo "生成文件: $FILE_PATH"
 done
