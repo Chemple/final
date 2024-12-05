@@ -1,0 +1,6 @@
+set(CMAKE_CXX_STANDARD 17)
+
+file(GLOB_RECURSE CPP_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp)
+
+add_library(${PROJECT_NAME} SHARED ${CPP_SOURCES})
+target_link_libraries(${PROJECT_NAME} PRIVATE spdlog::spdlog)
