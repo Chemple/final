@@ -168,8 +168,6 @@ public:
   }
 
   // each block is one merge section. maybe use merge section is better.
-  // assert(input_frame_num == block_num);
-  // k-way mergesort, k = block_num.
   auto MergeSortKBlocks(std::vector<BlockInfo> &blockinfos,
                         const uint32_t &begin_input_frame_id,
                         const uint32_t &input_frame_num,
@@ -185,18 +183,32 @@ public:
     auto output_chunk_id = blockinfos[0].start_chunk_id_;
     auto end_output_chunk_id = blockinfos[block_num - 1].start_chunk_id_ +
                                blockinfos[block_num - 1].chunk_num_;
+    // [output_chunk_id,end_output_chunk_id)
     spdlog::info("the block info num is {}", block_num);
+    spdlog::info("the input_frame_num is {}", input_frame_num);
+    assert(block_num <= input_frame_num);
     spdlog::info("start output chunk id is {}", output_chunk_id);
     spdlog::info("end_output_chunk_id is {}", end_output_chunk_id);
-    for (auto i = begin_input_frame_id; i < (input_frame_num + 1); i++) {
+    if (block_num == 1) {
+      auto block_info = blockinfos[0];
+      for (auto i = begin_input_frame_id;
+           i < begin_input_frame_id + input_frame_num + 1; i++) {
+        page_guards.emplace_back(buffer_pool_->GetFrame(i));
+      }
+      for (auto i = block_info.start_chunk_id_;
+           i < block_info.start_chunk_id_ + block_info.chunk_num_; i++) {
+        pread(source_file_fd, page_guards[0].GetPage()->data, PAGE_SIZE,
+              i * PAGE_SIZE);
+        pwrite(output_file_id, page_guards[0].GetPage()->data, PAGE_SIZE,
+               i * PAGE_SIZE);
+      }
+      return;
+    }
+    for (auto i = begin_input_frame_id;
+         i < (begin_input_frame_id + input_frame_num + 1); i++) {
       page_guards.emplace_back(buffer_pool_->GetFrame(i));
     }
-    // assert(input_frame_num == block_num);
-    auto real_input_frame_used = input_frame_num;
-    if (block_num < input_frame_num) {
-      real_input_frame_used = block_num;
-    }
-    for (uint32_t i = 0; i < real_input_frame_used; i++) {
+    for (uint32_t i = 0; i < block_num; i++) {
       assert(blockinfos[i].current_chunk_id_ == blockinfos[i].start_chunk_id_);
       assert(blockinfos[i].current_loc_in_chunk_ == 0);
       pread(source_file_fd, page_guards[i].page_->data, PAGE_SIZE,
@@ -206,8 +218,7 @@ public:
       min_heap.push({fist_value, i});
     }
     auto output_frame_loc = 0;
-    auto out_put_buffer =
-        (uint64_t *)page_guards[real_input_frame_used].page_->data;
+    auto out_put_buffer = (uint64_t *)page_guards[input_frame_num].page_->data;
     // check the condition.
     while (output_chunk_id < end_output_chunk_id) {
       assert(!min_heap.empty());
@@ -243,6 +254,11 @@ public:
                         .GetPage()
                         ->data)[the_block_info.current_loc_in_chunk_];
       min_heap.push({value, the_top_block_info_id});
+    }
+    // for debug:
+    for (const auto &info : blockinfos) {
+      assert(info.current_chunk_id_ == info.start_chunk_id_ + info.chunk_num_);
+      assert(info.current_loc_in_chunk_ == 0);
     }
     // spdlog::info("finish one ");
     if (!min_heap.empty()) {
@@ -329,9 +345,12 @@ public:
       return this->MergerSortWork(task);
     };
 
-    auto task_chunk_num = chunk_manager_->GetChunkNum() / task_num;
-    auto last_task_chunk_num = task_chunk_num + chunk_manager_->GetChunkNum() -
-                               task_num * task_chunk_num;
+    auto total_chunk = chunk_manager_->GetChunkNum();
+
+    auto task_chunk_num = total_chunk / task_num;
+
+    auto last_task_chunk_num =
+        task_chunk_num + total_chunk - task_num * task_chunk_num;
     // waste some frame.
     auto task_frame_num = FRAME_NUM / task_num;
     assert(task_frame_num >= 3);

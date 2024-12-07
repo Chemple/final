@@ -8,8 +8,8 @@
 
 namespace fs = std::filesystem;
 
-// 每个chunk的大小为4MB，每个uint64_t占8字节，所以每个chunk包含524288个uint64_t
-constexpr size_t CHUNK_SIZE = 4 * 1024 * 1024;    // 4MB
+// 每个chunk的大小为4KB，每个uint64_t占8字节
+constexpr size_t CHUNK_SIZE = 4 * 1024;           // 4KB
 constexpr size_t ELEMENT_SIZE = sizeof(uint64_t); // 每个元素8字节
 constexpr size_t ELEMENTS_PER_CHUNK =
     CHUNK_SIZE / ELEMENT_SIZE; // 每个chunk包含的元素数量
@@ -69,8 +69,8 @@ void checkFolderChunksSorted(const fs::path &folder_path) {
 }
 
 int main() {
-  std::string folder_path =
-      "/home/shiwen/project/final/output"; // 设置目标文件夹路径
-  checkFolderChunksSorted(folder_path);
+  std::string file_path = "/home/shiwen/project/final/output/output0";
+  // checkFolderChunksSorted(folder_path);
+  checkFileChunksSorted(file_path);
   return 0;
 }

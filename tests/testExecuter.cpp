@@ -6,7 +6,7 @@
 #include <string>
 #include <utility>
 
-TEST(ExecuterTest, SimpleTest) {
+TEST(ExecuterTest, FinalTest) {
   auto excuter_ptr = std::make_unique<final::Executer>(
       std::string("/home/shiwen/project/final/input"),
       std::string("/home/shiwen/project/final/output/output0"),
